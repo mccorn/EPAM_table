@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>NewJQuery</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="text/javascript" src="jquery-1.12.4.min.js"></script>
+    <script type="text/javascript" src="items.js"></script>
+<!--    <script src="test.js" type="text/javascript" rel="javascript" language="javascript"></script>-->
+    
+<script type="text/javascript" language="javascript"> 	       
+$(document).ready(function()   {
+	
+//	Отлов событий мыши!
+	//	button - Update Table
+	$('#button_update').on('click', function() {
+		updateItems();
+	}); 
+	
+	//	button AddNew Item
+	$(document).on('click','#button_addnew' ,function() {
+		clearAddForm();
+		$('#add_form_text0').focus();
+		$('#add_form_button').val('Add');
+		$('.active').removeClass('active');
+	});
+	
+	
+	$(document).on('click','#search_button' ,function(){
+		updateItems();
+		$('search_result').empty();
+		if (($('.search').val().trim()!="")&&($('.search').val().trim().length != 0)) {
+			searchItem($(this));
+		} else {
+			$('.search').val('');
+//			return false;
+		}
+	});
+	
+	$('#items_title').on('click', '#name_sort', function(){	
+		$('#price_sort').removeClass('active_sort');
+		if ($(this).hasClass('active_sort')) {
+			$(this).toggleClass('down');
+			$(this).toggleClass('up');
+		} else $('#name_sort').addClass('active_sort');
+		sortItemsByName();
+		$('#items').empty();
+		if ($(this).hasClass('down')==true) {items.reverse()};
+		printItems();
+	});
+	
+	$('#items_title').on('click', '#price_sort', function(){	
+		$('#name_sort').removeClass('active_sort');
+		if ($(this).hasClass('active_sort')) {
+			$(this).toggleClass('down');
+			$(this).toggleClass('up');
+		} else $('#price_sort').addClass('active_sort');
+		sortItemsByPrice();
+		$('#items').empty();
+		if ($(this).hasClass('down')==true) {items.reverse()};
+		printItems();
+	});
+	
+	$(document).on('click', '#add_form_button', function(){
+		var inx = $(this).siblings('#add_form_index').val();
+		var namestr = $('#add_form_text0').val().toString().trim();
+		var countstr = Number($('#add_form_text1').val());
+		var pricestr = Number($('#add_form_text2').val());
+		if ($(this).hasClass('update')==false) {
+			if (changeNameRule(namestr)) {
+				var clone = {};
+				clone.name = (namestr+"");
+				clone.count = countstr;
+				clone.price = pricestr;
+				items.push(clone);
+				printItem(items.length-1);
+				clearAddForm();
+				printItemsTitle(true);
+				updateItems();
+			}
+			else  {
+				$('#add_form_text0').addClass('active');
+				$('#add_form_text0').focus();
+			}
+		}
+	});
+	
+	$(document).on('click', '.button_delete_item', function(){
+		var inx = $(this).siblings(".item_index").val();
+		if (confirm("Вы точно хотите удалить элемент # "+inx+"?"))	{
+			$(this).parent('item_'+$(this).siblings(".item_index").text()).remove();
+			items.splice(inx,1);
+			updateItems();
+			deleteItemsTitle();
+			if (items.length == 0) {$('#items').empty()};
+			
+		}
+		deleteItemsTitle();
+	});
+			 
+	$(document).on('click', '.update', function(){
+		$('#add_form_button').val('Add');
+		$('#add_form_button').addClass('update');
+		$(this).parent('.item').addClass('active');
+		var inx = $('#add_form_index').val();
+		items[inx].name = $('#add_form_text0').val().trim();
+		items[inx].count = Number($('#add_form_text1').val().replace(/[^0-9]/g,""));
+		items[inx].price = Number($('#add_form_text2').val().replace(/[^.0-9]/g,""));
+		updateItems();
+		$('#add_form_text0').val('');
+		$('#add_form_text1').val('');
+		$('#add_form_text2').val('');
+		$('#add_form_index').val('');
+		$('#add_form_button').removeClass('update');
+	});
+		
+	$(document).on('click', '.button_edit_item', function(){
+		$(this).parent('.item').addClass('active');
+		$('#add_form_button').val('Update');
+		$('#add_form_button').addClass('update');
+		$('#add_form_index').val($(this).siblings('.item_index').val());
+		$('#add_form_text0').val($(this).siblings('.item_name').val());
+		$('#add_form_text1').val(($(this).siblings('.item_count').val().replace(/[^.0-9]/g,"")));
+		$('#add_form_text2').val(($(this).siblings('.item_price').val().replace(/[^.0-9]/g,"")));
+	});	
+		 
+//	Отлов событий клавиатуры	
+	$('.panel').on('keypress', '#add_form_text0', function(event){ 
+		if (($('#add_form_text2').val() > 15)) return changeNameRule($('#add_form_text2').val());
+	});
+				   
+	$(document).on('keydown', '#add_form_text1', function(event){
+		event= event || window.event;
+		if ((event.ctrlKey) && ((event.keyCode == 17)||(event.keyCode == 86))) {
+			return false;
+		}
+		var arr= [0,8,9,13,47,48,49,50,51,52,53,54,55,56,57,96,97,98,99,100,101,102,103,104,105];
+		if (event.keyCode && (arr.indexOf(event.keyCode))==-1){
+			return false;
+		};
+		
+	});
+	
+	$(document).on('keypress', '#add_form_text2', function(event){
+		event= event || window.event;
+		
+		if ((event.charCode==46)&&($(this).val().indexOf('.')==-1)){
+			return true;
+		} else if (event.charCode && (event.ctrlKey || event.charCode < 48 || event.charCode > 57 || (event.charCode == 48 && $(this).val().length==0))){
+				return false;
+			};
+
+	});
+	
+//	События фокуса
+	
+	$('.panel').on('focusout', '#add_form_text0', function(){
+		if ($('#add_form_text0').hasClass('active')) {
+			$('#add_form_text0').removeClass('active');
+			$('#console').empty();
+		}
+	});
+	
+//	Описание всех функций
+	//  Приведению к виду Цены ( $ 0.00 )	
+	function toPrice(str) {
+		var arr = ((str.toString().replace('[^.0-9]g',"")).toString()+".001").split(".");
+		arr[1] = arr[1].replace('[^0-9]g',"");
+		var inx = (arr[0].length % 3);
+		var len = arr[0].length;
+		var resl ='';
+		if (arr[0].length>3) {
+			for (var j = 0; j < Math.floor(len / 3);j++) {
+					resl = '\,' + arr[0][len-j*3-3] + arr[0][len-j*3-2] + arr[0][len-j*3-1]+resl;
+				}
+			if ((len % 3) != 0) {
+				for (var i = (len) % 3; i > 0; i--) {
+					resl= arr[0][i-1] + resl;
+				}
+			} else {
+				resl=resl.substring(1);
+			}	 
+			
+		} else return "$ "+arr[0] + "." + arr[1][0] + arr[1][1];
+		if (arr[0] == "") return "$ 0"+ "." + arr[1][0] + arr[1][1];
+		return "$ "+resl + "." + arr[1][0] + arr[1][1];
+		
+	}
+
+	//  Очистка формы ввода (Add / Update)
+	function clearAddForm() {
+		$('#add_form_text0').val('');
+		$('#add_form_text1').val('');
+		$('#add_form_text2').val('');
+		$('#add_form_index').val('');
+	}
+	
+	function updateItemsLength() {
+		document.getElementById("items_length").setAttribute('value','items[] length ='+items.length);
+	}
+	
+	function printFoundItem(j) {
+		//		Вариант 1(личный): В отдельную таблицу
+		//	$('#search_result').append('<div class="item" id="item_'+[j]+'"><input readonly="readonly" class="item_index" value='+[j]+'><input readonly="readonly" class="item_name" value="'+items[j].name+'"><input readonly="readonly" class="item_count" value='+items[j].count+'><input readonly="readonly" class="item_price" value="'+toPrice(items[j].price)+'"><input type="button" class="button_edit_item" value="&uArr; &dArr; Edit"><input type="button"  class="button_delete_item" value="&#10008;"></div>');
+
+		//		Вариант 2(по ТЗ):Используя основную таблицу
+		//	$('#items').append('<div id="search_result">');
+		//	$('#search_result').append('<div class="item" id="item_'+[j]+'"><input readonly="readonly" class="item_index" value='+[j]+'><input readonly="readonly" class="item_name" value="'+items[j].name+'"><input readonly="readonly" class="item_count" value='+items[j].count+'><input readonly="readonly" class="item_price" value="'+toPrice(items[j].price)+'"><input type="button" class="button_edit_item" value="&uArr; &dArr; Edit"><input type="button"  class="button_delete_item" value="&#10008;"></div>');
+	};
+	
+	//  Распечатать запись товара(Item)
+	function printItem(j) {
+		if (!$('#items_title').hasClass('display')) {
+			$('#items_title').addClass('display');
+		}
+		$('#items').append('<div class="item" id="item_'+[j]+'"><input readonly="readonly" class="item_index" value='+[j]+'><input readonly="readonly" class="item_name" value="'+items[j].name+'"><input readonly="readonly" class="item_count" value='+items[j].count+'><input readonly="readonly" class="item_price" value="'+toPrice(items[j].price)+'"><input type="button" class="button_edit_item" value="&uArr; &dArr; Edit"><input type="button"  class="button_delete_item" value="&#10008;"></div>');
+		if ((items.length==1)) printItemsTitle(true);
+	};
+	
+	function printItemsAfter(j) {
+		for (var i = j; i < items.length; i++){
+			printItem(i);
+		};
+	};
+	
+	function printItems() {
+		if (items.length != 0) for (var i = 0; i < items.length; i++){
+			printItem(i);
+		}
+	};
+		
+	//	Распечатка титла таблицы товаров
+	function printItemsTitle(bool) {
+		if (bool = true) {
+			$('#items_title').empty();	
+			$('#items_title').append('<input type="text" value="Name" readonly><div readonly id="name_sort" class="sort name_sort down" value=""></div><div readonly id="price_sort" class="sort price_sort down" value="Price" ></div><input type="text" value="Action" readonly>');
+		} else if (bool = false) {
+				$('#items_title').empty();
+				$('#items_title').append('<p>Таблица товаров: пусто</p>');
+			}
+			else {
+				alert('printItemsTitle(bool): некорректный формат аргумента!');
+			}
+	}
+	
+	function deleteItemsTitle() {
+		if (items.length==0) {
+			$('#items_title').empty();
+			$('#items_title').append('<p class="title">Таблица товаров: пусто</p>');
+		}
+	}
+	
+	function updateItems() {
+		$('#search_result').empty();
+		$('#items').empty();
+		printItemsTitle(true);
+		printItems();
+	};
+	
+	
+	function searchItem(elem) {
+		var key = $('.search').val().trim().toLowerCase();
+		if (key[0] == " ") {key.slice(0,1)}
+		var l = 0;
+//		$('.search').val("");
+		for (var i = 0; i< items.length;i++) {
+				$('.item').removeClass('active');
+		}
+		$('#search_result').empty();
+		for (var i = 0; i< items.length;i++) {
+			if (items[i].name.toLowerCase().indexOf(key)!=-1) {
+				l++;
+			//		Вариант 2(Дополнительный - адапт. под клиента)
+			//	$('#item_'+[i]).addClass('active');
+				printFoundItem(i);
+			}
+			else { 
+				$('#item_'+[i]).empty();
+			}
+		}
+//		Вариант 1(Основной - по Тз)
+		if (l==0) $('#items').append('<p> Not find! search_key = "'+key+' "</p>');
+
+//		Вариант 2(Дополнительный - адапт. под клиента)
+//		if (l==0) $('#search_result').append('<p> Not find! search_key = "'+key+' "</p>');
+	};
+	
+//Функции контроля,правил и проверок
+	
+	function sortItemsByName() {
+		items.sort(sortByNameRule);
+	} 
+	
+	function sortItemsByPrice() {
+		items.sort(sortByPriceRule);
+	} 
+	
+	function sortByPriceRule(a, b) {
+  		if (Number(a.price) > Number(b.price)) return 1;
+  		if (Number(a.price) < Number(b.price)) return -1;
+  		return 0;
+	};
+	
+	function sortByNameRule(a, b) {
+  		if ((a.name) > (b.name)) return 1;
+  		if ((a.name) < (b.name)) return -1;
+  		return 0;
+	};
+	
+	function changeItemRule(str1,str2,str3) { 
+		return changeNameRule(str1)*changeCountRule(str2)*changePriceRule(str3);
+	}
+	
+	function changeNameRule(str1) {
+		var str = str1;
+		consoleLog(str);
+		if ((str+""!="")&&((str+"").length != 0)&&((str+"").length <= 15)) {
+			$('#console').empty();
+			return true;
+		}
+		else {
+			$('#console').empty();
+			$('#console').append('<p>** Ввод некорректных данных: Длина имени должна быть равна 1-15 символам</p>');
+			return false;
+		} 
+		return;
+	}
+	
+	function consoleLog(str) {
+		$('#console').append('<p>'+str.toString()+'</p>');
+		$('#console').append('<p>'+str.toString()+'</p>');
+	}
+	
+//	Подготовка к работе
+	
+	
+ 	updateItems();
+	updateItemsLength();
+
+});
+    </script> 
+    
+   
+</head>
+<style>
+    
+    
+    
+</style>  
+<body>
+<div id="wrapper">
+    <header>
+		<input id="items_length" type="text" readonly>
+		<input type="button" id="button_update" data="but2" value="Update Table">
+	</header>
+    
+	<div id="search_form">
+		<input type="search" id="search" class="search" placeholder="Введите имя для поиска">
+		<input type="button" id="search_button" class="search_button" value="&#128269 search">
+	</div>	
+	<div class="container">
+		<div id="search_result">
+			
+		</div>
+		<div id="table">
+			<input type="button" id="button_addnew" value="AddNew Item">
+			<div class="items_title" id="items_title">
+
+			</div>
+			<div id="items">
+
+			</div>
+			
+		</div>
+	</div>
+	
+	<div class="panel" id="add_panel">
+		
+		<div>	
+			<input class="add_form_index" id="add_form_index" required type="text" data="3" placeholder="index" readonly>
+			<label for="add_form_text0">Name (*Required field!): </label>
+			<input class="add_form_text0" id="add_form_text0" maxlength=15 type="text" data="0" placeholder="name">
+		</div>
+		<div>
+			<label for="add_form_text1">Count: </label>
+			<input class="add_form_text1" id="add_form_text1" maxlength=5 min="1" max="99999" type="text" data="1" placeholder="count">
+		</div>
+		<div>
+			<label for="add_form_text2">Price: </label>
+			<input class="add_form_text2" id="add_form_text2" maxlength=8 type="text" data="2" placeholder="price">
+		</div>
+		<input type="button" class="add_form_button" id="add_form_button" data="but1" value="Add">
+		
+	</div>
+	<div id="console">
+	</div>
+</div>
+	
+</body>
+</html>
